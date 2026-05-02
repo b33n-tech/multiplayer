@@ -1,19 +1,21 @@
-<!-- phone.html -->
+<!-- index.html : labyrinthe version smooth -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Télécommande</title>
+<title>Labyrinthe Smooth</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 html,body{
   margin:0;
-  width:100%;
-  height:100%;
   background:#111;
   color:white;
   font-family:Arial,sans-serif;
+  width:100%;
+  height:100%;
+  overflow:hidden;
 }
 .wrap{
   height:100%;
@@ -21,40 +23,23 @@ html,body{
   flex-direction:column;
   justify-content:center;
   align-items:center;
-  gap:20px;
 }
-button{
-  width:90px;
-  height:90px;
-  font-size:38px;
-  border:none;
-  border-radius:20px;
-  background:#222;
-  color:white;
-  box-shadow:0 0 10px rgba(255,255,255,.08);
+canvas{
+  background:#000;
+  border:2px solid #333;
+  box-shadow:0 0 25px rgba(0,255,120,.12);
 }
-button:active{
-  transform:scale(.95);
-  background:#00ff88;
-  color:black;
-}
-.row{
-  display:flex;
-  gap:20px;
+#msg{
+  margin-top:14px;
+  font-size:22px;
 }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <button onclick="send('up')">⬆️</button>
-
-  <div class="row">
-    <button onclick="send('left')">⬅️</button>
-    <button onclick="send('right')">➡️</button>
-  </div>
-
-  <button onclick="send('down')">⬇️</button>
+  <canvas id="game"></canvas>
+  <div id="msg">Télécommande active 🎮</div>
 </div>
 
 <script>
@@ -62,17 +47,128 @@ const SUPABASE_URL = "https://kqhquyeeroskszhblsvq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_JMOdzvwVNDBTpHlqKy584Q_Z5SvuYmh";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* maze */
+const maze = [
+"###########",
+"#S#     # #",
+"# # ### # #",
+"# #   #   #",
+"# ### ### #",
+"#     #  E#",
+"###########"
+];
+
+const size = 60;
+const rows = maze.length;
+const cols = maze[0].length;
+
+const canvas = document.getElementById("game");
+canvas.width = cols * size;
+canvas.height = rows * size;
+
+const ctx = canvas.getContext("2d");
+const msg = document.getElementById("msg");
+
+/* logical grid position */
+let px = 1;
+let py = 1;
+
+/* render smooth position */
+let rx = 1;
+let ry = 1;
+
+/* start */
+for(let y=0;y<rows;y++){
+  for(let x=0;x<cols;x++){
+    if(maze[y][x] === "S"){
+      px=x; py=y; rx=x; ry=y;
+    }
+  }
+}
+
+function drawMaze(){
+  for(let y=0;y<rows;y++){
+    for(let x=0;x<cols;x++){
+
+      const cell = maze[y][x];
+
+      if(cell === "#"){
+        ctx.fillStyle = "#0077ff";
+        ctx.fillRect(x*size,y*size,size,size);
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(x*size,y*size,size,size);
+      }
+
+      if(cell === "E"){
+        ctx.fillStyle = "gold";
+        ctx.fillRect(x*size+12,y*size+12,size-24,size-24);
+      }
+    }
+  }
+}
+
+function drawPlayer(){
+
+  const cx = rx*size + size/2;
+  const cy = ry*size + size/2;
+
+  ctx.beginPath();
+  ctx.arc(cx,cy,size/3,0,Math.PI*2);
+  ctx.fillStyle = "#00ff88";
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "#00ff88";
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function loop(){
+
+  /* lerp smooth */
+  rx += (px - rx) * 0.22;
+  ry += (py - ry) * 0.22;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawMaze();
+  drawPlayer();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+
+function move(dir){
+
+  let nx = px;
+  let ny = py;
+
+  if(dir==="left") nx--;
+  if(dir==="right") nx++;
+  if(dir==="up") ny--;
+  if(dir==="down") ny++;
+
+  const target = maze[ny][nx];
+
+  if(target !== "#"){
+    px = nx;
+    py = ny;
+  }
+
+  if(target === "E"){
+    msg.innerHTML = "🏆 Bravo !";
+  }
+}
+
+/* realtime */
 const channel = client.channel("remote-control");
 
-channel.subscribe();
-
-function send(dir){
-  channel.send({
-    type:"broadcast",
-    event:"move",
-    payload:{dir}
-  });
-}
+channel
+.on("broadcast",{event:"move"}, ({payload})=>{
+   move(payload.dir);
+})
+.subscribe();
 </script>
 
 </body>
