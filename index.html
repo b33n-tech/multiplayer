@@ -1,78 +1,85 @@
-<!-- phone.html -->
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Télécommande</title>
+<title>Point Control</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 html,body{
   margin:0;
   width:100%;
   height:100%;
+  overflow:hidden;
   background:#111;
-  color:white;
-  font-family:Arial,sans-serif;
+  font-family:Arial, sans-serif;
 }
-.wrap{
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:20px;
-}
-button{
-  width:90px;
-  height:90px;
-  font-size:38px;
-  border:none;
-  border-radius:20px;
-  background:#222;
-  color:white;
-  box-shadow:0 0 10px rgba(255,255,255,.08);
-}
-button:active{
-  transform:scale(.95);
+#dot{
+  position:absolute;
+  width:40px;
+  height:40px;
+  border-radius:50%;
   background:#00ff88;
-  color:black;
+  box-shadow:0 0 20px #00ff88;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
 }
-.row{
-  display:flex;
-  gap:20px;
+#info{
+  position:fixed;
+  top:15px;
+  left:15px;
+  color:white;
+  font-size:14px;
+  opacity:.8;
 }
 </style>
 </head>
 <body>
 
-<div class="wrap">
-  <button onclick="send('up')">⬆️</button>
-
-  <div class="row">
-    <button onclick="send('left')">⬅️</button>
-    <button onclick="send('right')">➡️</button>
-  </div>
-
-  <button onclick="send('down')">⬇️</button>
-</div>
+<div id="info">En attente de la télécommande...</div>
+<div id="dot"></div>
 
 <script>
-const SUPABASE_URL = "https://kqhquyeeroskszhblsvq.supabase.co";
-const SUPABASE_KEY = "sb_publishable_JMOdzvwVNDBTpHlqKy584Q_Z5SvuYmh";
+const SUPABASE_URL = "https://TONPROJET.supabase.co";
+const SUPABASE_KEY = "TA_CLE_ANON";
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const dot = document.getElementById("dot");
+
+let x = window.innerWidth / 2;
+let y = window.innerHeight / 2;
+
+function draw(){
+  dot.style.left = x + "px";
+  dot.style.top = y + "px";
+}
+
+draw();
+
+function move(dir){
+  const step = 30;
+
+  if(dir === "left") x -= step;
+  if(dir === "right") x += step;
+  if(dir === "up") y -= step;
+  if(dir === "down") y += step;
+
+  x = Math.max(20, Math.min(window.innerWidth - 20, x));
+  y = Math.max(20, Math.min(window.innerHeight - 20, y));
+
+  draw();
+}
+
 const channel = client.channel("remote-control");
 
-channel.subscribe();
-
-function send(dir){
-  channel.send({
-    type:"broadcast",
-    event:"move",
-    payload:{dir}
-  });
-}
+channel
+.on("broadcast", { event:"move" }, ({payload})=>{
+   move(payload.dir);
+})
+.subscribe();
 </script>
 
 </body>
